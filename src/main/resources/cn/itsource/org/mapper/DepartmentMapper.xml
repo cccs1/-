@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<!-- 命名空间是接口的全限定名 -->
+<mapper namespace="cn.itsource.org.mapper.DepartmentMapper">
+    <resultMap id="deptMap" type="cn.itsource.org.domain.Department">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="sn" property="sn"/>
+        <result column="state" property="state"/>
+        <result column="dir_path" property="dirPath"/>
+        <result column="manager_id" property="managerId"/>
+        <result column="parent_id" property="parentId"/>
+
+        <association property="manager" javaType="cn.itsource.org.domain.Employee">
+            <id property="id" column="eid"/>
+            <result property="username" column="username"/>
+        </association>
+        <association property="parent" javaType="cn.itsource.org.domain.Department">
+            <id property="id" column="pid"/>
+            <result property="name" column="pname"/>
+        </association>
+
+    </resultMap>
+
+    <select id="findPage" resultMap="deptMap">
+        SELECT
+            d.* , e.id eid, e.username, p.id pid, p.name pname
+        FROM
+            t_department d
+        left JOIN t_employee e on d.manager_id = e.id
+        left  join t_department p on p.id = d.parent_id
+
+
+        <where>
+            <if test="keyword != null and keyword != ''">
+                and d.name like concat('%', #{keyword}, '%')
+
+            </if>
+            <if test="parentId != null and parentId != ''">
+                and p.id = #{parentId}
+            </if>
+            <if test="managerId != null and managerId != ''">
+                and e.id = #{managerId}
+            </if>
+
+        </where>
+    </select>
+
+    <!-- 上级部门的下拉框  -->
+    <select id="upDeptOptions" resultType="cn.itsource.org.domain.Department">
+        select *
+        from t_department d
+        where d.id in (select distinct d1.id
+                       from t_department d1,
+                            t_department d2
+                       where d1.id = d2.parent_id)
+    </select>
+    
+    <resultMap id="deptUp" type="cn.itsource.org.domain.Department">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <collection property="children" ofType="cn.itsource.org.domain.Department">
+            <id column="id2" property="id"/>
+            <result column="name2" property="name"/>
+            <collection property="children" ofType="cn.itsource.org.domain.Department">
+                <id column="id3" property="id"/>
+                <result column="name3" property="name"/>
+            </collection>
+        </collection>
+    </resultMap>
+
+    <select id="getUpUp" resultMap="deptUp">
+        SELECT
+            d.id, d.name, de.id id2, de.name name2, d2.id id3 ,d2.name name3
+        FROM
+            t_department d
+                INNER JOIN t_department de ON d.id = de.parent_id
+
+                LEFT JOIN  t_department d2 on d2.parent_id = de.id
+        where d.parent_id is null
+    </select>
+
+
+</mapper>
